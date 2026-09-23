@@ -28,7 +28,7 @@ const SUGGESTIONS = [
 ]
 
 // FastGPT 配置
-const FASTGPT_APP_ID = '6ab40d804d913b3c9bfbd6eb'
+const FASTGPT_APP_ID = (import.meta as any).env?.VITE_FASTGPT_APP_ID || '6ab40d804d913b3c9bfbd6eb'
 const FASTGPT_API_KEY = (import.meta as any).env?.VITE_FASTGPT_API_KEY || ''
 // 本地 Docker 走 nginx 反代（相对路径）；Railway/云端部署通过环境变量指定完整 URL
 const FASTGPT_API_URL = (import.meta as any).env?.VITE_FASTGPT_API_URL || '/api/v1/chat/completions'
