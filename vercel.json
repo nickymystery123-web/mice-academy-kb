@@ -1,8 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd frontend && npm ci && npm run build",
-  "outputDirectory": "frontend/dist",
-  "framework": null,
+  "services": [
+    {
+      "name": "frontend",
+      "path": ".",
+      "framework": null,
+      "buildCommand": "node scripts/copy-data.mjs && cd frontend && npm ci && npm run build",
+      "outputDirectory": "frontend/dist"
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
