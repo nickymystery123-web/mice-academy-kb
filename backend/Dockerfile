@@ -1,4 +1,4 @@
-﻿FROM python:3.11-slim
+FROM python:3.11-slim
 
 WORKDIR /app
 
@@ -7,14 +7,11 @@ RUN apt-get update && apt-get install -y --no-install-recommends build-essential
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# 复制代码与数据
+# 复制代码
 COPY . .
 
-# 预下载 bge-m3 向量模型（约 2.2GB，构建时下载一次）
-RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('BAAI/bge-m3')"
-
-# 构建向量索引（FAISS + BM25）
-RUN python -m app.ingestion.build_index || echo "FAISS index build skipped (using FastGPT for vector store)"
+# 注意：bge-m3 模型（约 2.2GB）改为运行时首次请求时自动下载
+# 避免构建时下载导致 Railway 构建超时/OOM
 
 EXPOSE 8000
 
