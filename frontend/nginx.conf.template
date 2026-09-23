@@ -1,0 +1,43 @@
+# nginx 配置模板（启动时用 envsubst 替换 ${PORT} 和 ${FASTGPT_UPSTREAM}）
+server {
+    listen ${PORT};
+    server_name _;
+    root /usr/share/nginx/html;
+    index index.html;
+
+    # 静态资源缓存
+    location /assets/ {
+        expires 1y;
+        add_header Cache-Control "public, immutable";
+    }
+
+    # FastGPT 对话 API 代理（支持 SSE 流式）
+    location /api/v1/chat/completions {
+        proxy_pass ${FASTGPT_UPSTREAM}/api/v1/chat/completions;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Connection '';
+        proxy_buffering off;
+        proxy_cache off;
+        chunked_transfer_encoding on;
+        proxy_read_timeout 300s;
+    }
+
+    # FastGPT 管理后台（可选，通过 /fastgpt/ 访问）
+    location /fastgpt/ {
+        proxy_pass ${FASTGPT_UPSTREAM}/;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+    }
+
+    # SPA 路由回退
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+}

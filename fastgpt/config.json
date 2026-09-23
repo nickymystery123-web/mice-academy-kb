@@ -1,0 +1,50 @@
+{
+  "feConfigs": {},
+  "systemEnv": {
+    "vectorMaxProcess": 10,
+    "qaMaxProcess": 10,
+    "vlmMaxProcess": 5,
+    "hnswEfSearch": 100
+  },
+  "llmModels": [
+    {
+      "model": "deepseek-chat",
+      "name": "DeepSeek Chat",
+      "maxContext": 32000,
+      "maxResponse": 4000,
+      "quoteMaxToken": 12000,
+      "maxTemperature": 1.2,
+      "charsPointsPrice": 0,
+      "censor": false,
+      "vision": false,
+      "datasetProcess": true,
+      "usedInClassify": true,
+      "usedInExtractFields": true,
+      "usedInToolCall": true,
+      "usedInQueryExtension": true,
+      "toolChoice": false,
+      "functionCall": false,
+      "customCQPrompt": "",
+      "customExtractPrompt": "",
+      "defaultSystemChatPrompt": "",
+      "defaultConfig": {},
+      "fieldMap": {}
+    }
+  ],
+  "vectorModels": [
+    {
+      "model": "bge-m3",
+      "name": "BGE-M3 (本地)",
+      "charsPointsPrice": 0,
+      "defaultToken": 8192,
+      "maxToken": 8192,
+      "weight": 100,
+      "requestUrl": "${EMBEDDING_API_URL}",
+      "requestAuth": "local-bge-m3"
+    }
+  ],
+  "reRankModels": [],
+  "audioSpeechModels": [],
+  "whisperModel": {},
+  "ttsModels": []
+}

@@ -1,0 +1,97 @@
+# FastGPT docker-compose (pgvector 版)
+# 适配 MICE-KB 项目：直连 DeepSeek（不通过 OneAPI），使用外部 mice-net 网络
+# 数据卷: ./data/mongo, ./data/pg
+# 端口: fastgpt 不暴露宿主端口（通过 nginx 反代），DB 不暴露
+# 密钥通过同目录 .env 文件注入（.env 已被 gitignore）
+
+version: '3.3'
+services:
+  pg:
+    image: pgvector/pgvector:0.7.0-pg15
+    container_name: fastgpt-pg
+    restart: always
+    networks:
+      - mice-net
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:-miceadmin}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=postgres
+    volumes:
+      - ./data/pg:/var/lib/postgresql/data
+
+  mongo:
+    image: mongo:5.0.18
+    container_name: fastgpt-mongo
+    restart: always
+    networks:
+      - mice-net
+    command: mongod --keyFile /data/mongodb.key --replSet rs0
+    environment:
+      - MONGO_INITDB_ROOT_USERNAME=${MONGO_INITDB_ROOT_USERNAME:-miceadmin}
+      - MONGO_INITDB_ROOT_PASSWORD=${MONGO_INITDB_ROOT_PASSWORD}
+    volumes:
+      - ./data/mongo:/data/db
+    entrypoint:
+      - bash
+      - -c
+      - |
+        openssl rand -base64 128 > /data/mongodb.key
+        chmod 400 /data/mongodb.key
+        chown 999:999 /data/mongodb.key
+        echo 'const isInited = rs.status().ok === 1
+        if(!isInited){
+          rs.initiate({
+              _id: "rs0",
+              members: [
+                  { _id: 0, host: "mongo:27017" }
+              ]
+          })
+        }' > /data/initReplicaSet.js
+        exec docker-entrypoint.sh "$$@" &
+        until mongo -u $${MONGO_INITDB_ROOT_USERNAME:-miceadmin} -p $${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin --eval "print('waited for connection')" > /dev/null 2>&1; do
+          echo "Waiting for MongoDB to start..."
+          sleep 2
+        done
+        mongo -u $${MONGO_INITDB_ROOT_USERNAME:-miceadmin} -p $${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase admin /data/initReplicaSet.js
+        wait $$!
+
+  sandbox:
+    container_name: fastgpt-sandbox
+    image: ghcr.io/labring/fastgpt-sandbox:latest
+    networks:
+      - mice-net
+    restart: always
+
+  fastgpt:
+    container_name: fastgpt
+    image: ghcr.io/labring/fastgpt:v4.8.5
+    ports:
+      - "3001:3000"
+    networks:
+      - mice-net
+    depends_on:
+      - mongo
+      - pg
+      - sandbox
+    restart: always
+    environment:
+      - DEFAULT_ROOT_PSW=${DEFAULT_ROOT_PSW}
+      # 直连 DeepSeek（不通过 OneAPI）
+      - OPENAI_BASE_URL=https://api.deepseek.com/v1
+      - CHAT_API_KEY=${CHAT_API_KEY}
+      - DB_MAX_LINK=30
+      - TOKEN_KEY=${TOKEN_KEY}
+      - ROOT_KEY=${ROOT_KEY}
+      - FILE_TOKEN_KEY=${FILE_TOKEN_KEY}
+      - MONGODB_URI=mongodb://${MONGO_INITDB_ROOT_USERNAME:-miceadmin}:${MONGO_INITDB_ROOT_PASSWORD}@mongo:27017/fastgpt?authSource=admin
+      - PG_URL=postgresql://${POSTGRES_USER:-miceadmin}:${POSTGRES_PASSWORD}@pg:5432/postgres
+      - SANDBOX_URL=http://sandbox:3000
+      - LOG_LEVEL=info
+      - EMBEDDING_API_URL=http://backend:8000/api/v1
+      - STORE_LOG_LEVEL=warn
+    volumes:
+      - ./config.json:/app/data/config.json
+
+networks:
+  mice-net:
+    external: true
